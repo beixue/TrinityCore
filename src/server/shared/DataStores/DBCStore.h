@@ -75,7 +75,7 @@ class DBCStorage
     typedef std::list<char*> StringPoolList;
     public:
         explicit DBCStorage(char const* f)
-            : fmt(f), nCount(0), fieldCount(0), dataTable(NULL)
+            : fmt(f), nCount(0), fieldCount(0), dataTable(NULL), maxdatacount(0), mindatacount(std::numeric_limits<uint32>::max())
         {
             indexTable.asT = NULL;
         }
@@ -84,6 +84,14 @@ class DBCStorage
 
         T const* LookupEntry(uint32 id) const
         {
+#ifdef ELUNA
+            if (id <= maxdatacount && id >= mindatacount)
+            {
+                typename std::unordered_map<uint32, T const*>::const_iterator it = data.find(id);
+                if (it != data.end())
+                    return it->second;
+            }
+#endif
             return (id >= nCount) ? NULL : indexTable.asT[id];
         }
 
@@ -94,7 +102,21 @@ class DBCStorage
             return entry;
         }
 
+#ifdef ELUNA
+        void SetEntry(uint32 id, T* t)
+        {
+            delete data[id];
+            data[id] = t;
+            maxdatacount = std::max(maxdatacount, id);
+            mindatacount = std::min(mindatacount, id);
+        }
+#endif
+
+#ifdef ELUNA
+        uint32  GetNumRows() const { return std::max(maxdatacount + 1, nCount); }
+#else
         uint32  GetNumRows() const { return nCount; }
+#endif
         char const* GetFormat() const { return fmt; }
         uint32 GetFieldCount() const { return fieldCount; }
 
@@ -271,6 +293,12 @@ class DBCStorage
 
         void Clear()
         {
+#ifdef ELUNA
+            data.clear();
+            maxdatacount = 0;
+            mindatacount = std::numeric_limits<uint32>::max();
+#endif
+
             if (!indexTable.asT)
                 return;
 
@@ -302,6 +330,12 @@ class DBCStorage
 
         T* dataTable;
         StringPoolList stringPoolList;
+
+#ifdef ELUNA
+        uint32 maxdatacount;
+        uint32 mindatacount;
+        std::unordered_map<uint32, T const*> data;
+#endif
 
         DBCStorage(DBCStorage const& right) = delete;
         DBCStorage& operator=(DBCStorage const& right) = delete;
