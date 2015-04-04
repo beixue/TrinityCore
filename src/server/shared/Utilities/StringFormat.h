@@ -19,7 +19,7 @@
 #ifndef TRINITYCORE_STRING_FORMAT_H
 #define TRINITYCORE_STRING_FORMAT_H
 
-#include <format.h>
+#include "../../../dep/cppformat/format.h"
 
 namespace Trinity
 {
